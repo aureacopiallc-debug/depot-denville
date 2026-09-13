@@ -159,6 +159,13 @@
   tr.sem { cursor: pointer; } tr.sem:hover td { background: var(--surface-2); }
   tr.sem.is-open td { background: var(--surface-2); font-weight: 700; }
 
+  .rappel { border-left: 4px solid var(--warn); background: var(--warn-bg); color: var(--ink);
+    border-radius: 4px 10px 10px 4px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
+  .rappel.tard { border-left-color: var(--alert); background: var(--alert-bg); }
+  .rappel.fait { border-left-color: var(--ok); background: var(--ok-bg); }
+  .rappel b { font-weight: 700; }
+  .sugg { color: var(--accent); font-weight: 600; }
+
   .foot { margin-top: 24px; font-size: 12.5px; color: var(--ink-soft); }
   [hidden] { display: none !important; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -202,8 +209,13 @@
     <p class="hint" id="cmdSous">—</p>
 
     <div class="creneaux">
-      <button type="button" id="cr-matin" class="is-on">Livraison du matin</button>
-      <button type="button" id="cr-aprem">Livraison de l'après-midi</button>
+      <button type="button" id="cr-pain" class="is-on">Pain · avant 9 h</button>
+      <button type="button" id="cr-patis">Pâtisserie · le soir</button>
+    </div>
+
+    <div class="rappel" id="rappel" hidden></div>
+    <div class="envoi" id="aideBesoin" hidden style="margin-bottom:16px">
+      <button class="ghost" id="remplir">Remplir selon les besoins</button>
     </div>
 
     <div id="cmdListe"></div>
@@ -270,10 +282,11 @@
     <div id="prodListe"></div>
     <div class="add">
       <input type="text" id="newNom" placeholder="Nouveau produit" aria-label="Nom du produit">
+      <select id="newNature" aria-label="Nature"><option value="pain">Pain</option><option value="patisserie">Pâtisserie</option></select>
       <input type="number" id="newPrix" step="0.05" min="0" placeholder="prix" aria-label="Prix de vente">
       <button class="primary" id="addProd" style="flex:0 0 auto">Ajouter</button>
     </div>
-    <p class="foot">Le prix sert au calcul de la recette attendue. Changer un prix n'affecte que les journées à venir : les bilans passés gardent le prix appliqué à l'époque.</p>
+    <p class="foot">La nature décide de la commande dans laquelle le produit apparaît : le pain part le matin, la pâtisserie le soir. « Il en faut » est la quantité qu'on veut voir en vitrine chaque jour : la commande du soir propose cette quantité moins ce qui reste. Le prix sert au calcul de la recette attendue.</p>
   </section>
 
   <!-- ============ ÉQUIPE ============ -->
@@ -305,7 +318,7 @@
 
   var SESSION_H = 14;
   var state = { produits: [], jours: {}, acces: [], reglages: {}, db: null, local: false, moi: null };
-  var vue = { creneau: "matin" };
+  var vue = { nature: "pain" };
   var portePersonne = null;
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -378,7 +391,8 @@
     db.collection("depot_produits").onSnapshot(function (snap) {
       state.produits = snap.docs.map(function (d) {
         var v = d.data() || {};
-        return { id: d.id, nom: v.nom || d.id, prix: Number(v.prix) || 0, ordre: Number(v.ordre) || 0 };
+        return { id: d.id, nom: v.nom || d.id, prix: Number(v.prix) || 0, ordre: Number(v.ordre) || 0,
+                 nature: v.nature === "patisserie" ? "patisserie" : "pain", cible: Number(v.cible) || 0 };
       }).sort(trier);
       if (state.moi) rendre();
     }, function () { majSync(true); });
@@ -464,7 +478,7 @@
   }
 
   /* ---------- écritures ---------- */
-  function jourVide(d) { return { d: d, cmd_matin: {}, cmd_aprem: {}, livre: {}, invendu: {}, caisse: 0 }; }
+  function jourVide(d) { return { d: d, cmd_pain: {}, cmd_patis: {}, livre: {}, invendu: {}, caisse: 0, envoi_pain: "", envoi_patis: "" }; }
   function jour(d) { return state.jours[d] || jourVide(d); }
 
   async function ecrireJour(d, patch) {
@@ -486,7 +500,7 @@
       if (i >= 0) state.produits[i] = p; else state.produits.push(p);
       state.produits.sort(trier); lsEcrire(); rendre(); return;
     }
-    try { await state.db.doc("depot_produits/" + p.id).set({ nom: p.nom, prix: p.prix, ordre: p.ordre }); }
+    try { await state.db.doc("depot_produits/" + p.id).set({ nom: p.nom, prix: p.prix, ordre: p.ordre, nature: p.nature || "pain", cible: p.cible || 0 }); }
     catch (e) { window.alert("Enregistrement impossible."); }
   }
   async function supprimerProduit(id) {
@@ -522,34 +536,54 @@
 
   function rendreCommande() {
     var d = demain(), j = jour(d);
-    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var champ = vue.nature === "pain" ? "cmd_pain" : "cmd_patis";
     var q = j[champ] || {};
+    var pain = vue.nature === "pain";
 
-    document.getElementById("cmdTitre").textContent = "Commande pour " + libDate(d);
-    var autre = vue.creneau === "matin" ? (j.cmd_aprem || {}) : (j.cmd_matin || {});
-    var nAutre = Object.keys(autre).reduce(function (s, k) { return s + (Number(autre[k]) || 0); }, 0);
-    document.getElementById("cmdSous").textContent = vue.creneau === "matin"
-      ? "Ce qui doit arriver tôt" + (nAutre ? " · " + nAutre + " pièces déjà prévues l'après-midi" : "")
-      : "Ce qui doit arriver dans la journée" + (nAutre ? " · " + nAutre + " pièces déjà prévues le matin" : "");
+    /* la commande du soir se cale sur ce qui reste en vitrine :
+       on ne recommande que la différence avec ce qu'on veut avoir */
+    var reste = (jour(aujourdhui()).invendu) || {};
 
-    document.getElementById("cr-matin").className = vue.creneau === "matin" ? "is-on" : "";
-    document.getElementById("cr-aprem").className = vue.creneau === "aprem" ? "is-on" : "";
+    document.getElementById("cmdTitre").textContent =
+      (pain ? "Pain pour " : "Pâtisserie pour ") + libDate(d);
+    document.getElementById("cmdSous").textContent = pain
+      ? "À envoyer au fournil avant 9 h"
+      : "À envoyer à la fermeture, une fois les invendus comptés";
+
+    document.getElementById("cr-pain").className = pain ? "is-on" : "";
+    document.getElementById("cr-patis").className = pain ? "" : "is-on";
+    document.getElementById("aideBesoin").hidden = pain;
+
+    rendreRappel(j, pain);
+
+    var liste = state.produits.filter(function (p) {
+      return pain ? p.nature !== "patisserie" : p.nature === "patisserie";
+    });
 
     var el = document.getElementById("cmdListe");
-    if (!state.produits.length) {
+    if (!liste.length) {
       el.innerHTML = '<p class="hint">' + (estDirection()
-        ? "Ajoutez vos produits dans l'onglet Produits."
+        ? "Aucun produit de cette nature. Ajoutez-en dans l'onglet Produits."
         : "La direction doit d'abord enregistrer les produits.") + "</p>";
       document.getElementById("cmdTotal").textContent = "0";
       return;
     }
 
     var total = 0;
-    el.innerHTML = state.produits.map(function (p) {
+    el.innerHTML = liste.map(function (p) {
       var n = Number(q[p.id]) || 0; total += n;
+      var sous;
+      if (pain) {
+        sous = euros(p.prix) + " l'unité";
+      } else {
+        var r = Number(reste[p.id]) || 0;
+        var besoin = Math.max(0, (p.cible || 0) - r);
+        sous = "reste " + r + " en vitrine" +
+          (p.cible ? ' · il en faut ' + p.cible + ' → <span class="sugg">' + besoin + " à commander</span>" : "");
+      }
       return '<div class="ligne' + (n ? "" : " vide") + '">' +
         '<div><div class="nom">' + esc(p.nom) + '</div>' +
-        '<div class="sous">' + euros(p.prix) + " l'unité</div></div>" +
+        '<div class="sous">' + sous + "</div></div>" +
         '<div class="compteur">' +
         '<button type="button" data-m="-" data-id="' + p.id + '" aria-label="Retirer un ' + esc(p.nom) + '">−</button>' +
         '<input type="number" min="0" inputmode="numeric" value="' + n + '" data-q="' + p.id + '" aria-label="Quantité de ' + esc(p.nom) + '">' +
@@ -559,15 +593,56 @@
     document.getElementById("cmdTotal").textContent = total + (total > 1 ? " pièces" : " pièce");
   }
 
+  function rendreRappel(j, pain) {
+    var box = document.getElementById("rappel");
+    var envoi = pain ? j.envoi_pain : j.envoi_patis;
+    var h = new Date().getHours();
+
+    if (envoi) {
+      box.hidden = false; box.className = "rappel fait";
+      box.innerHTML = "Commande envoyée à <b>" + esc(envoi) + "</b>. Vous pouvez en renvoyer une corrigée.";
+      return;
+    }
+    if (pain && h >= 9) {
+      box.hidden = false; box.className = "rappel tard";
+      box.innerHTML = "Il est passé <b>9 h</b> et la commande de pain n'est pas partie.";
+      return;
+    }
+    if (pain) {
+      box.hidden = false; box.className = "rappel";
+      box.innerHTML = "À envoyer avant <b>9 h</b>.";
+      return;
+    }
+    var inv = jour(aujourdhui()).invendu || {};
+    if (!Object.keys(inv).length) {
+      box.hidden = false; box.className = "rappel";
+      box.innerHTML = "Comptez d'abord les invendus dans l'onglet <b>Le soir</b> : la commande s'en déduit.";
+      return;
+    }
+    box.hidden = true;
+  }
+
+  function remplirBesoins() {
+    var d = demain(), j = jour(d);
+    var reste = (jour(aujourdhui()).invendu) || {};
+    var q = Object.assign({}, j.cmd_patis || {});
+    state.produits.forEach(function (p) {
+      if (p.nature !== "patisserie") return;
+      var r = Number(reste[p.id]) || 0;
+      q[p.id] = Math.max(0, (p.cible || 0) - r);
+    });
+    ecrireJour(d, { cmd_patis: q });
+  }
+
   function texteCommande() {
     var d = demain(), j = jour(d);
-    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var champ = vue.nature === "pain" ? "cmd_pain" : "cmd_patis";
     var q = j[champ] || {};
     var lignes = state.produits.filter(function (p) { return Number(q[p.id]) > 0; })
       .map(function (p) { return "• " + p.nom + " : " + q[p.id]; });
     if (!lignes.length) return null;
     var nom = state.reglages.nomDepot || "Denville";
-    var creneau = vue.creneau === "matin" ? "LIVRAISON DU MATIN" : "LIVRAISON DE L'APRÈS-MIDI";
+    var creneau = vue.nature === "pain" ? "PAIN" : "PÂTISSERIE";
     var h = new Date().toTimeString().slice(0, 5);
     return "COMMANDE " + nom.toUpperCase() + "\n" + creneau + "\n" +
       libDate(d) + "\n\n" + lignes.join("\n") +
@@ -579,7 +654,7 @@
     var livre = j.livre || {}, inv = j.invendu || {};
     var cmd = {};
     /* ce qui a été livré aujourd'hui : la commande passée hier pour aujourd'hui */
-    var m = j.cmd_matin || {}, a = j.cmd_aprem || {};
+    var m = j.cmd_pain || {}, a = j.cmd_patis || {};
     state.produits.forEach(function (p) {
       cmd[p.id] = (Number(m[p.id]) || 0) + (Number(a[p.id]) || 0);
     });
@@ -635,10 +710,16 @@
 
   function rendreProduits() {
     document.getElementById("prodListe").innerHTML = state.produits.map(function (p) {
+      var patis = p.nature === "patisserie";
       return '<div class="setrow" data-id="' + p.id + '">' +
         '<input type="text" value="' + esc(p.nom) + '" data-f="nom" aria-label="Nom">' +
+        '<select data-f="nature" aria-label="Nature">' +
+        '<option value="pain"' + (patis ? "" : " selected") + ">Pain</option>" +
+        '<option value="patisserie"' + (patis ? " selected" : "") + ">Pâtisserie</option></select>" +
         '<span class="lbl">prix</span>' +
         '<input type="number" step="0.05" min="0" value="' + p.prix.toFixed(2) + '" data-f="prix" aria-label="Prix">' +
+        (patis ? '<span class="lbl">il en faut</span>' +
+          '<input type="number" min="0" step="1" value="' + (p.cible || 0) + '" data-f="cible" style="width:70px" aria-label="Quantité souhaitée en vitrine">' : "") +
         '<button class="del" data-del="' + p.id + '" aria-label="Supprimer ' + esc(p.nom) + '">×</button></div>';
     }).join("");
   }
@@ -663,12 +744,13 @@
   }
 
   /* ---------- interactions commande ---------- */
-  document.getElementById("cr-matin").addEventListener("click", function () { vue.creneau = "matin"; rendreCommande(); });
-  document.getElementById("cr-aprem").addEventListener("click", function () { vue.creneau = "aprem"; rendreCommande(); });
+  document.getElementById("cr-pain").addEventListener("click", function () { vue.nature = "pain"; rendreCommande(); });
+  document.getElementById("cr-patis").addEventListener("click", function () { vue.nature = "patisserie"; rendreCommande(); });
+  document.getElementById("remplir").addEventListener("click", remplirBesoins);
 
   function majQte(pid, delta, valeur) {
     var d = demain(), j = jour(d);
-    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var champ = vue.nature === "pain" ? "cmd_pain" : "cmd_patis";
     var q = Object.assign({}, j[champ] || {});
     var n = valeur !== undefined ? valeur : (Number(q[pid]) || 0) + delta;
     /* on garde le zéro plutôt que d'ôter la clé : une fusion n'efface rien,
@@ -712,6 +794,10 @@
   function envoyer(canal) {
     var txt = texteCommande();
     if (!txt) { window.alert("La commande est vide."); return; }
+    if (canal !== "copier") {
+      var marque = {}; marque[vue.nature === "pain" ? "envoi_pain" : "envoi_patis"] = new Date().toTimeString().slice(0, 5);
+      ecrireJour(demain(), marque);
+    }
     if (canal === "copier") {
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () {
         window.alert("Commande copiée. Collez-la où vous voulez.");
@@ -738,6 +824,8 @@
     var row = ev.target.closest(".setrow");
     var p = state.produits.find(function (x) { return x.id === row.dataset.id; }); if (!p) return;
     if (f === "nom") { var n = ev.target.value.trim(); if (!n) { ev.target.value = p.nom; return; } p.nom = n; }
+    else if (f === "nature") p.nature = ev.target.value === "patisserie" ? "patisserie" : "pain";
+    else if (f === "cible") p.cible = Math.max(0, Math.round(Number(ev.target.value) || 0));
     else p.prix = Math.max(0, Number(ev.target.value) || 0);
     ecrireProduit(p);
   });
@@ -752,7 +840,9 @@
     var base = slug(nom), id = base, k = 2;
     while (state.produits.some(function (x) { return x.id === id; })) { id = base + "-" + k++; }
     var ordre = state.produits.length ? Math.max.apply(null, state.produits.map(function (x) { return x.ordre || 0; })) + 10 : 10;
-    ecrireProduit({ id: id, nom: nom, prix: prix, ordre: ordre });
+    ecrireProduit({ id: id, nom: nom, prix: prix, ordre: ordre,
+                    nature: document.getElementById("newNature").value === "patisserie" ? "patisserie" : "pain",
+                    cible: 0 });
     document.getElementById("newNom").value = ""; document.getElementById("newPrix").value = "";
     document.getElementById("newNom").focus();
   });
@@ -846,7 +936,7 @@
       var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
       var w = semaineISO(d); if (an && w.an !== an) return;
       var J = histo.jours[date] || {};
-      var cm = J.cmd_matin || {}, ca = J.cmd_aprem || {}, lv = J.livre || {}, iv = J.invendu || {};
+      var cm = J.cmd_pain || {}, ca = J.cmd_patis || {}, lv = J.livre || {}, iv = J.invendu || {};
       semaines[w.cle] = { an: w.an, no: w.no };
       if (!parSem[w.cle]) parSem[w.cle] = { l: 0, i: 0, th: 0, reel: 0, prods: {} };
 
