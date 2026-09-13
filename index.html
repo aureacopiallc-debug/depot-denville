@@ -159,6 +159,12 @@
   tr.sem { cursor: pointer; } tr.sem:hover td { background: var(--surface-2); }
   tr.sem.is-open td { background: var(--surface-2); font-weight: 700; }
 
+  .cible-groupe { display: flex; align-items: center; gap: 9px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
+  .cible-groupe .fleche { color: var(--ink-soft); }
+  .cible-groupe b { font-family: var(--f-display); font-weight: 700; font-size: 16px; letter-spacing: -.01em; }
+  .cible-groupe .vide { color: var(--ink-soft); font-style: italic; }
+
   .rappel { border-left: 4px solid var(--warn); background: var(--warn-bg); color: var(--ink);
     border-radius: 4px 10px 10px 4px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
   .rappel.tard { border-left-color: var(--alert); background: var(--alert-bg); }
@@ -213,6 +219,7 @@
       <button type="button" id="cr-patis">Pâtisserie · le soir</button>
     </div>
 
+    <div class="cible-groupe" id="cibleGroupe"></div>
     <div class="rappel" id="rappel" hidden></div>
     <div class="envoi" id="aideBesoin" hidden style="margin-bottom:16px">
       <button class="ghost" id="remplir">Remplir selon les besoins</button>
@@ -226,11 +233,11 @@
     </div>
 
     <div class="envoi">
-      <button class="primary wa" id="envoiWa">Envoyer par WhatsApp</button>
+      <button class="primary wa" id="envoiPartage">Envoyer au groupe</button>
       <button class="primary tg" id="envoiTg">Telegram</button>
       <button class="ghost" id="copier">Copier le texte</button>
     </div>
-    <p class="foot">La commande s'enregistre au fur et à mesure, même sans envoi. Le bouton ouvre la messagerie avec le texte déjà écrit : il reste à appuyer sur envoyer. Vous pouvez renvoyer une commande corrigée, le fournil verra l'heure d'envoi.</p>
+    <p class="foot">La commande s'enregistre au fur et à mesure, même sans envoi. « Envoyer au groupe » ouvre le partage du téléphone : choisissez WhatsApp, puis le groupe indiqué au-dessus. WhatsApp n'autorise pas l'envoi direct dans un groupe depuis une application extérieure — ce choix reste donc manuel. Vous pouvez renvoyer une commande corrigée, l'heure d'envoi est conservée.</p>
   </section>
 
   <!-- ============ LE SOIR ============ -->
@@ -303,12 +310,14 @@
 
     <div class="fiche" style="margin-top:22px">
       <h3>Où partent les commandes</h3>
-      <div class="kv"><span class="k"><label for="telWa">Numéro WhatsApp du fournil</label></span>
-        <span class="v"><input type="text" id="telWa" placeholder="+33 6 12 34 56 78" style="width:180px;text-align:right"></span></div>
+      <div class="kv"><span class="k"><label for="grPain">Groupe pour le pain</label></span>
+        <span class="v"><input type="text" id="grPain" placeholder="Boulangerie" style="width:190px;text-align:right"></span></div>
+      <div class="kv"><span class="k"><label for="grPatis">Groupe pour la pâtisserie</label></span>
+        <span class="v"><input type="text" id="grPatis" placeholder="Pâtisserie" style="width:190px;text-align:right"></span></div>
       <div class="kv"><span class="k"><label for="nomDepot">Nom du dépôt dans le message</label></span>
-        <span class="v"><input type="text" id="nomDepot" placeholder="Denville" style="width:180px;text-align:right"></span></div>
+        <span class="v"><input type="text" id="nomDepot" placeholder="Denville" style="width:190px;text-align:right"></span></div>
     </div>
-    <p class="foot">Le numéro s'écrit avec l'indicatif du pays. Les espaces et les points n'ont pas d'importance, ils sont retirés automatiquement.</p>
+    <p class="foot">Ces noms ne servent qu'à rappeler à la vendeuse où envoyer : écrivez-les exactement comme dans WhatsApp, pour qu'elle reconnaisse le bon groupe dans la liste de partage. WhatsApp interdit à une application extérieure d'écrire directement dans un groupe ; le choix du destinataire reste donc manuel, d'où l'importance du rappel.</p>
   </section>
 </div>
 
@@ -554,6 +563,7 @@
     document.getElementById("cr-patis").className = pain ? "" : "is-on";
     document.getElementById("aideBesoin").hidden = pain;
 
+    rendreCible(pain);
     rendreRappel(j, pain);
 
     var liste = state.produits.filter(function (p) {
@@ -591,6 +601,14 @@
         "</div></div>";
     }).join("");
     document.getElementById("cmdTotal").textContent = total + (total > 1 ? " pièces" : " pièce");
+  }
+
+  function rendreCible(pain) {
+    var box = document.getElementById("cibleGroupe");
+    var nom = pain ? (state.reglages.groupePain || "") : (state.reglages.groupePatis || "");
+    box.innerHTML = '<span class="fleche">À envoyer dans</span>' +
+      (nom ? "<b>" + esc(nom) + "</b>"
+           : '<span class="vide">groupe non renseigné — voir l\'onglet Équipe</span>');
   }
 
   function rendreRappel(j, pain) {
@@ -642,7 +660,8 @@
       .map(function (p) { return "• " + p.nom + " : " + q[p.id]; });
     if (!lignes.length) return null;
     var nom = state.reglages.nomDepot || "Denville";
-    var creneau = vue.nature === "pain" ? "PAIN" : "PÂTISSERIE";
+    var pain = vue.nature === "pain";
+    var creneau = pain ? "PAIN" : "PÂTISSERIE";
     var h = new Date().toTimeString().slice(0, 5);
     return "COMMANDE " + nom.toUpperCase() + "\n" + creneau + "\n" +
       libDate(d) + "\n\n" + lignes.join("\n") +
@@ -738,9 +757,10 @@
         (state.moi && state.moi.id === p.id ? '<span class="lbl">vous</span>' :
           '<button class="del" data-delg="' + p.id + '" aria-label="Supprimer">×</button>') + "</div>";
     }).join("");
-    var t = document.getElementById("telWa"), n = document.getElementById("nomDepot");
-    if (document.activeElement !== t) t.value = state.reglages.telWa || "";
-    if (document.activeElement !== n) n.value = state.reglages.nomDepot || "";
+    [["grPain", "groupePain"], ["grPatis", "groupePatis"], ["nomDepot", "nomDepot"]].forEach(function (c) {
+      var el = document.getElementById(c[0]);
+      if (el && document.activeElement !== el) el.value = state.reglages[c[1]] || "";
+    });
   }
 
   /* ---------- interactions commande ---------- */
@@ -805,16 +825,19 @@
       else window.prompt("Copiez ce texte :", txt);
       return;
     }
-    if (canal === "wa") {
-      var tel = String(state.reglages.telWa || "").replace(/[^0-9]/g, "");
-      var url = tel ? "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt)
-                    : "https://wa.me/?text=" + encodeURIComponent(txt);
-      window.open(url, "_blank");
+    if (canal === "partage") {
+      /* le partage du téléphone est la seule voie vers un groupe :
+         WhatsApp refuse qu'une application extérieure y écrive seule */
+      if (navigator.share) {
+        navigator.share({ text: txt }).catch(function () {});
+      } else {
+        window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank");
+      }
     } else {
       window.open("https://t.me/share/url?url=&text=" + encodeURIComponent(txt), "_blank");
     }
   }
-  document.getElementById("envoiWa").addEventListener("click", function () { envoyer("wa"); });
+  document.getElementById("envoiPartage").addEventListener("click", function () { envoyer("partage"); });
   document.getElementById("envoiTg").addEventListener("click", function () { envoyer("tg"); });
   document.getElementById("copier").addEventListener("click", function () { envoyer("copier"); });
 
@@ -882,7 +905,8 @@
     document.getElementById("newGens").value = "";
     window.alert("Accès créé pour " + nom + ".\nSon code : " + code + "\n\nDonnez-le-lui de vive voix.");
   });
-  document.getElementById("telWa").addEventListener("change", function () { ecrireReglages({ telWa: this.value.trim() }); });
+  document.getElementById("grPain").addEventListener("change", function () { ecrireReglages({ groupePain: this.value.trim() }); });
+  document.getElementById("grPatis").addEventListener("change", function () { ecrireReglages({ groupePatis: this.value.trim() }); });
   document.getElementById("nomDepot").addEventListener("change", function () { ecrireReglages({ nomDepot: this.value.trim() }); });
 
   /* ---------- bilan ---------- */
