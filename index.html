@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dépôt Denville">
+<meta name="theme-color" content="#F3F4F2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-180.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<title>Dépôt de Denville</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Karla:wght@400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --ground: #F3F4F2;
+    --surface: #FFFFFF;
+    --surface-2: #E9ECE7;
+    --ink: #1B2119;
+    --ink-soft: #626B5E;
+    --line: #D9DED5;
+    --line-strong: #BCC4B6;
+    --ok: #4A7A3E;
+    --ok-bg: #E7F0E3;
+    --warn: #A8700F;
+    --warn-bg: #F9EFD9;
+    --alert: #A83232;
+    --alert-bg: #F8E6E4;
+    --accent: #3E6B5A;
+    --accent-bg: #E4EEE9;
+    --f-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Karla", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #141811; --surface: #1C2119; --surface-2: #252C21;
+      --ink: #E8EDE4; --ink-soft: #9AA694; --line: #2F3729; --line-strong: #444E3C;
+      --ok: #86BE77; --ok-bg: #1F2E1B; --warn: #DDA954; --warn-bg: #33290F;
+      --alert: #E98E86; --alert-bg: #35201E; --accent: #7FB59C; --accent-bg: #1C2C25;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #141811; --surface: #1C2119; --surface-2: #252C21;
+    --ink: #E8EDE4; --ink-soft: #9AA694; --line: #2F3729; --line-strong: #444E3C;
+    --ok: #86BE77; --ok-bg: #1F2E1B; --warn: #DDA954; --warn-bg: #33290F;
+    --alert: #E98E86; --alert-bg: #35201E; --accent: #7FB59C; --accent-bg: #1C2C25;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 20px 16px 80px; }
+
+  .porte { max-width: 420px; margin: 0 auto; padding: 44px 16px 40px; }
+  .porte .brand { text-align: center; margin-bottom: 6px; }
+  .porte .intro { text-align: center; color: var(--ink-soft); font-size: 14.5px; margin: 0 0 28px; }
+  .gens { display: flex; flex-direction: column; gap: 9px; }
+  .gens button { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; cursor: pointer; font-family: var(--f-display); font-weight: 600; font-size: 17.5px; color: var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .gens button:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  .gens button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .gens .role { font-family: var(--f-body); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+  .code-zone { margin-top: 26px; } .code-zone.hidden { display: none; }
+  .code-in { width: 100%; font-family: var(--f-display); font-weight: 800; font-size: 38px; text-align: center; letter-spacing: .22em; padding: 12px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+  .code-in:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .pad button { font-family: var(--f-display); font-weight: 700; font-size: 22px; padding: 15px 0; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .pad button:hover { background: var(--surface-2); }
+  .pad .wide { font-size: 15px; font-family: var(--f-body); font-weight: 600; color: var(--ink-soft); }
+  .err { color: var(--alert); font-size: 14px; font-weight: 600; text-align: center; margin: 14px 0 0; min-height: 20px; }
+
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand { font-family: var(--f-display); font-weight: 800; font-size: 26px; letter-spacing: -.02em; margin: 0; }
+  .today { font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); margin: 6px 0 18px; }
+  .who { display: flex; align-items: center; gap: 6px; } .who b { color: var(--ink); font-weight: 700; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: 0 0 auto; }
+  .dot.off { background: var(--warn); }
+  .sortir { border: 0; background: none; color: var(--ink-soft); text-decoration: underline; cursor: pointer; font-family: var(--f-body); font-size: 12px; padding: 2px; }
+
+  .tabs { display: flex; gap: 3px; background: var(--surface-2); padding: 4px; border-radius: 11px; margin-bottom: 22px; }
+  .tab { flex: 1; border: 0; background: none; font-family: var(--f-body); font-weight: 600; font-size: 13.5px; color: var(--ink-soft); padding: 9px 4px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  h2.sec { font-family: var(--f-display); font-size: 15px; font-weight: 700; margin: 0 0 3px; }
+  p.hint { margin: 0 0 12px; color: var(--ink-soft); font-size: 13.5px; }
+  .block { margin-bottom: 30px; }
+
+  .creneaux { display: flex; gap: 8px; margin-bottom: 18px; }
+  .creneaux button { flex: 1; padding: 11px 8px; border: 1.5px solid var(--line-strong); background: var(--surface); border-radius: 9px; font-family: var(--f-body); font-weight: 700; font-size: 14px; color: var(--ink-soft); cursor: pointer; }
+  .creneaux button.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .creneaux button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ligne { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin-bottom: 8px; }
+  .ligne .nom { font-family: var(--f-display); font-weight: 600; font-size: 16px; }
+  .ligne .sous { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-top: 1px; }
+  .compteur { display: flex; align-items: center; gap: 6px; }
+  .compteur button { width: 38px; height: 38px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-family: var(--f-display); font-weight: 700; font-size: 19px; cursor: pointer; line-height: 1; }
+  .compteur button:hover { background: var(--surface-2); }
+  .compteur button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .compteur input { width: 58px; height: 38px; text-align: center; font-family: var(--f-display); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--ground); color: var(--ink); }
+  .compteur input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+  .ligne.vide .compteur input { color: var(--ink-soft); font-weight: 500; }
+
+  .total { background: var(--accent-bg); border: 1px solid var(--accent); border-radius: 12px; padding: 15px 17px; margin: 20px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .total .lib { font-family: var(--f-body); font-weight: 600; font-size: 14px; color: var(--ink-soft); }
+  .total .val { font-family: var(--f-display); font-weight: 800; font-size: 26px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--accent); }
+
+  .envoi { display: flex; gap: 9px; flex-wrap: wrap; }
+  .primary { flex: 1 1 180px; background: var(--ink); color: var(--ground); border: 0; font-family: var(--f-body); font-weight: 700; font-size: 15px; padding: 13px 18px; border-radius: 9px; cursor: pointer; }
+  .primary:hover { opacity: .88; }
+  .primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wa { background: #25603F; color: #fff; }
+  .tg { background: #2A6F97; color: #fff; }
+  .ghost { background: none; border: 1px solid var(--line-strong); color: var(--ink-soft); font-family: var(--f-body); font-weight: 600; font-size: 14px; padding: 11px 16px; border-radius: 9px; cursor: pointer; }
+
+  .fiche { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+  .fiche h3 { font-family: var(--f-display); font-size: 15px; font-weight: 700; margin: 0 0 12px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .kv:last-of-type { border-bottom: 0; }
+  .kv .k { color: var(--ink-soft); }
+  .kv .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kv.grand { padding-top: 12px; margin-top: 6px; border-top: 2px solid var(--line-strong); border-bottom: 0; }
+  .kv.grand .v { font-family: var(--f-display); font-size: 21px; letter-spacing: -.02em; }
+  .ecart-ok { color: var(--ok); } .ecart-nok { color: var(--alert); } .ecart-tiede { color: var(--warn); }
+  .caisse-in { width: 130px; text-align: right; font-family: var(--f-display); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 11px; background: var(--ground); color: var(--ink); }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 9px 11px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); font-weight: 600; }
+  thead th { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td { font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--surface); }
+  .c-vendu { color: var(--ok); font-weight: 600; }
+  .c-jete { color: var(--alert); }
+  .c-0 { color: var(--line-strong); }
+  .moy { color: var(--ink-soft); }
+
+  .setrow { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .setrow input[type="text"] { flex: 1 1 140px; min-width: 0; }
+  input[type="text"], input[type="number"], select { font-family: var(--f-body); font-size: 15px; color: var(--ink); background: var(--ground); border: 1px solid var(--line-strong); border-radius: 7px; padding: 8px 10px; }
+  input[type="number"] { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+  input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+  .lbl { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+  .mono { font-family: var(--f-display); font-weight: 700; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+  .del { border: 0; background: none; color: var(--ink-soft); cursor: pointer; font-size: 19px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
+  .del:hover { color: var(--alert); background: var(--alert-bg); }
+  .add { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+  .add input[type="text"] { flex: 1 1 150px; }
+
+  .periode { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  tr.sem { cursor: pointer; } tr.sem:hover td { background: var(--surface-2); }
+  tr.sem.is-open td { background: var(--surface-2); font-weight: 700; }
+
+  .foot { margin-top: 24px; font-size: 12.5px; color: var(--ink-soft); }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (min-width: 560px) { .ligne { grid-template-columns: 1fr auto auto; } }
+</style>
+</head>
+<body>
+
+<div class="porte" id="porte" hidden>
+  <h1 class="brand">Dépôt de Denville</h1>
+  <p class="intro" id="porteIntro">Qui est en boutique ?</p>
+  <div class="gens" id="gens"></div>
+  <div class="code-zone hidden" id="codeZone">
+    <input class="code-in" id="codeIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="····" aria-label="Code personnel">
+    <div class="pad" id="pad"></div>
+  </div>
+  <p class="err" id="porteErr" role="status"></p>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <div class="top">
+    <h1 class="brand">Dépôt de Denville</h1>
+    <div class="today" id="today"></div>
+  </div>
+  <div class="bar">
+    <span class="who"><span class="dot" id="dot"></span><b id="moi">—</b><span id="syncTxt"></span></span>
+    <button class="sortir" id="sortir">Changer de personne</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-cmd" aria-selected="true" aria-controls="v-cmd">Commander</button>
+    <button class="tab" role="tab" id="tab-soir" aria-selected="false" aria-controls="v-soir">Le soir</button>
+    <button class="tab" role="tab" id="tab-bilan" aria-selected="false" aria-controls="v-bilan">Bilan</button>
+    <button class="tab" role="tab" id="tab-prod" aria-selected="false" aria-controls="v-prod" hidden>Produits</button>
+    <button class="tab" role="tab" id="tab-equipe" aria-selected="false" aria-controls="v-equipe" hidden>Équipe</button>
+  </div>
+
+  <!-- ============ COMMANDER ============ -->
+  <section id="v-cmd" role="tabpanel" aria-labelledby="tab-cmd">
+    <h2 class="sec" id="cmdTitre">Commande pour demain</h2>
+    <p class="hint" id="cmdSous">—</p>
+
+    <div class="creneaux">
+      <button type="button" id="cr-matin" class="is-on">Livraison du matin</button>
+      <button type="button" id="cr-aprem">Livraison de l'après-midi</button>
+    </div>
+
+    <div id="cmdListe"></div>
+
+    <div class="total">
+      <span class="lib">Total commandé</span>
+      <span class="val" id="cmdTotal">0</span>
+    </div>
+
+    <div class="envoi">
+      <button class="primary wa" id="envoiWa">Envoyer par WhatsApp</button>
+      <button class="primary tg" id="envoiTg">Telegram</button>
+      <button class="ghost" id="copier">Copier le texte</button>
+    </div>
+    <p class="foot">La commande s'enregistre au fur et à mesure, même sans envoi. Le bouton ouvre la messagerie avec le texte déjà écrit : il reste à appuyer sur envoyer. Vous pouvez renvoyer une commande corrigée, le fournil verra l'heure d'envoi.</p>
+  </section>
+
+  <!-- ============ LE SOIR ============ -->
+  <section id="v-soir" role="tabpanel" aria-labelledby="tab-soir" hidden>
+    <h2 class="sec" id="soirTitre">Invendus du jour</h2>
+    <p class="hint">Pour chaque produit livré aujourd'hui, comptez ce qu'il reste. Le vendu se calcule tout seul.</p>
+
+    <div id="soirListe"></div>
+
+    <div class="fiche" id="ficheCaisse">
+      <h3>Contrôle de caisse</h3>
+      <div class="kv"><span class="k">Livré aujourd'hui</span><span class="v" id="kLivre">0</span></div>
+      <div class="kv"><span class="k">Invendu</span><span class="v" id="kInvendu">0</span></div>
+      <div class="kv"><span class="k">Vendu</span><span class="v" id="kVendu">0</span></div>
+      <div class="kv"><span class="k">Recette attendue</span><span class="v" id="kTheorique">0,00 €</span></div>
+      <div class="kv"><span class="k"><label for="caisseIn">Caisse réelle</label></span>
+        <span class="v"><input type="number" class="caisse-in" id="caisseIn" step="0.01" min="0" placeholder="0,00"></span></div>
+      <div class="kv grand"><span class="k">Écart</span><span class="v" id="kEcart">—</span></div>
+    </div>
+    <p class="foot">La recette attendue ne connaît ni les remises, ni le pain donné, ni la casse : un petit écart est normal. Ce qui compte, c'est qu'il reste petit et qu'il ne penche pas toujours du même côté.</p>
+  </section>
+
+  <!-- ============ BILAN ============ -->
+  <section id="v-bilan" role="tabpanel" aria-labelledby="tab-bilan" hidden>
+    <div class="periode">
+      <label class="lbl" for="anneeSel">Année</label>
+      <select id="anneeSel" aria-label="Année"></select>
+      <button class="ghost" id="recharger">Actualiser</button>
+    </div>
+
+    <div class="block">
+      <h2 class="sec">Par produit</h2>
+      <p class="hint" id="bilanResume">Chargement…</p>
+      <div class="scroll"><table id="tblProd"></table></div>
+    </div>
+
+    <div class="block">
+      <h2 class="sec">Semaine par semaine</h2>
+      <p class="hint">Cliquez sur une semaine pour voir le détail.</p>
+      <div class="scroll"><table id="tblSem"></table></div>
+    </div>
+
+    <div class="block" id="detailSem" hidden></div>
+    <p class="foot">Le taux d'invendu est le nerf de la commande : au-dessus de 10 % sur un produit, on livre trop. Les écarts de caisse sont cumulés sur la semaine — un écart isolé ne veut rien dire, une série dans le même sens, si.</p>
+  </section>
+
+  <!-- ============ PRODUITS ============ -->
+  <section id="v-prod" role="tabpanel" aria-labelledby="tab-prod" hidden>
+    <div id="prodListe"></div>
+    <div class="add">
+      <input type="text" id="newNom" placeholder="Nouveau produit" aria-label="Nom du produit">
+      <input type="number" id="newPrix" step="0.05" min="0" placeholder="prix" aria-label="Prix de vente">
+      <button class="primary" id="addProd" style="flex:0 0 auto">Ajouter</button>
+    </div>
+    <p class="foot">Le prix sert au calcul de la recette attendue. Changer un prix n'affecte que les journées à venir : les bilans passés gardent le prix appliqué à l'époque.</p>
+  </section>
+
+  <!-- ============ ÉQUIPE ============ -->
+  <section id="v-equipe" role="tabpanel" aria-labelledby="tab-equipe" hidden>
+    <div id="gensAdmin"></div>
+    <div class="add">
+      <input type="text" id="newGens" placeholder="Prénom" aria-label="Prénom">
+      <select id="newRole" aria-label="Rôle">
+        <option value="vente">Vente</option>
+        <option value="direction">Direction</option>
+      </select>
+      <button class="primary" id="addGens" style="flex:0 0 auto">Créer l'accès</button>
+    </div>
+
+    <div class="fiche" style="margin-top:22px">
+      <h3>Où partent les commandes</h3>
+      <div class="kv"><span class="k"><label for="telWa">Numéro WhatsApp du fournil</label></span>
+        <span class="v"><input type="text" id="telWa" placeholder="+33 6 12 34 56 78" style="width:180px;text-align:right"></span></div>
+      <div class="kv"><span class="k"><label for="nomDepot">Nom du dépôt dans le message</label></span>
+        <span class="v"><input type="text" id="nomDepot" placeholder="Denville" style="width:180px;text-align:right"></span></div>
+    </div>
+    <p class="foot">Le numéro s'écrit avec l'indicatif du pays. Les espaces et les points n'ont pas d'importance, ils sont retirés automatiquement.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SESSION_H = 14;
+  var state = { produits: [], jours: {}, acces: [], reglages: {}, db: null, local: false, moi: null };
+  var vue = { creneau: "matin" };
+  var portePersonne = null;
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function aujourdhui() { return iso(new Date()); }
+  function demain() { var d = new Date(); d.setDate(d.getDate() + 1); return iso(d); }
+  function slug(s) {
+    return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || uid();
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function euros(c) { return (Math.round(c * 100) / 100).toFixed(2).replace(".", ",") + " €"; }
+
+  var FMT_LONG = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  var FMT_COURT = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  var FMT_JOUR = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" });
+  function libDate(s) { var p = s.split("-").map(Number); return FMT_COURT.format(new Date(p[0], p[1] - 1, p[2])); }
+
+  var LS = { p: "depot.produits", j: "depot.jours", a: "depot.acces", r: "depot.reglages", s: "depot.session" };
+  function lsLire() {
+    try {
+      state.produits = JSON.parse(localStorage.getItem(LS.p) || "[]");
+      state.jours = JSON.parse(localStorage.getItem(LS.j) || "{}");
+      state.acces = JSON.parse(localStorage.getItem(LS.a) || "[]");
+      state.reglages = JSON.parse(localStorage.getItem(LS.r) || "{}");
+    } catch (e) { state.produits = []; state.jours = {}; state.acces = []; state.reglages = {}; }
+  }
+  function lsEcrire() {
+    try {
+      localStorage.setItem(LS.p, JSON.stringify(state.produits));
+      localStorage.setItem(LS.j, JSON.stringify(state.jours));
+      localStorage.setItem(LS.a, JSON.stringify(state.acces));
+      localStorage.setItem(LS.r, JSON.stringify(state.reglages));
+    } catch (e) {}
+  }
+  function sessionLire() {
+    try {
+      var s = JSON.parse(localStorage.getItem(LS.s) || "null");
+      if (!s || !s.id || !s.t || Date.now() - s.t > SESSION_H * 3600e3) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+  function sessionEcrire(p) { try { localStorage.setItem(LS.s, JSON.stringify({ id: p.id, t: Date.now() })); } catch (e) {} }
+  function sessionEffacer() { try { localStorage.removeItem(LS.s); } catch (e) {} }
+
+  function trier(a, b) { return (a.ordre || 0) - (b.ordre || 0) || a.nom.localeCompare(b.nom, "fr"); }
+  function estDirection() { return state.moi && state.moi.role === "direction"; }
+
+  /* ---------- démarrage ---------- */
+  async function demarrer() {
+    var db = null;
+    try {
+      if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId && window.firebase) {
+        firebase.initializeApp(window.FIREBASE_CONFIG);
+        db = firebase.firestore();
+      }
+    } catch (e) { db = null; }
+
+    if (!db) { state.local = true; lsLire(); ouvrirPorte(); return; }
+    state.db = db;
+
+    db.collection("depot_acces").onSnapshot(function (snap) {
+      state.acces = snap.docs.map(function (d) {
+        var v = d.data() || {};
+        return { id: d.id, nom: v.nom || d.id, code: String(v.code || ""), role: v.role === "direction" ? "direction" : "vente", ordre: Number(v.ordre) || 0 };
+      }).sort(function (a, b) { return (a.ordre || 0) - (b.ordre || 0) || a.nom.localeCompare(b.nom, "fr"); });
+      if (!state.moi) ouvrirPorte(); else rendreEquipe();
+    }, function () { majSync(true); });
+
+    db.collection("depot_produits").onSnapshot(function (snap) {
+      state.produits = snap.docs.map(function (d) {
+        var v = d.data() || {};
+        return { id: d.id, nom: v.nom || d.id, prix: Number(v.prix) || 0, ordre: Number(v.ordre) || 0 };
+      }).sort(trier);
+      if (state.moi) rendre();
+    }, function () { majSync(true); });
+
+    db.collection("depot_jours").orderBy("d", "desc").limit(60).onSnapshot(function (snap) {
+      var j = {};
+      snap.docs.forEach(function (d) { j[d.id] = d.data() || {}; });
+      state.jours = j;
+      if (state.moi) rendre();
+    }, function () { majSync(true); });
+
+    db.doc("depot_reglages/general").onSnapshot(function (d) {
+      state.reglages = d.exists ? (d.data() || {}) : {};
+      if (state.moi) { rendreEquipe(); rendre(); }
+    }, function () {});
+  }
+
+  function ouvrirPorte() {
+    var s = sessionLire();
+    if (s) { var p = state.acces.find(function (x) { return x.id === s.id; }); if (p) { entrer(p); return; } }
+    document.getElementById("app").hidden = true;
+    document.getElementById("porte").hidden = false;
+    portePersonne = null;
+    document.getElementById("codeZone").className = "code-zone hidden";
+    document.getElementById("porteIntro").textContent = state.acces.length ? "Qui est en boutique ?" : "Aucun accès n'a encore été créé.";
+    document.getElementById("porteErr").textContent = "";
+    document.getElementById("gens").innerHTML = state.acces.map(function (p) {
+      return '<button type="button" data-p="' + p.id + '">' + esc(p.nom) +
+        '<span class="role">' + (p.role === "direction" ? "direction" : "vente") + "</span></button>";
+    }).join("");
+  }
+
+  function entrer(p) {
+    state.moi = p; sessionEcrire(p);
+    document.getElementById("porte").hidden = true;
+    document.getElementById("app").hidden = false;
+    document.getElementById("moi").textContent = p.nom;
+    var dir = p.role === "direction";
+    document.getElementById("tab-prod").hidden = !dir;
+    document.getElementById("tab-equipe").hidden = !dir;
+    if (!dir) { document.getElementById("v-prod").hidden = true; document.getElementById("v-equipe").hidden = true; }
+    majSync(); rendre();
+  }
+
+  document.getElementById("gens").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-p]"); if (!b) return;
+    var p = state.acces.find(function (x) { return x.id === b.dataset.p; }); if (!p) return;
+    if (!p.code) { entrer(p); return; }
+    portePersonne = p;
+    document.getElementById("porteIntro").textContent = "Code de " + p.nom;
+    document.getElementById("gens").innerHTML = "";
+    document.getElementById("codeZone").className = "code-zone";
+    var i = document.getElementById("codeIn"); i.value = ""; i.focus();
+  });
+
+  document.getElementById("pad").innerHTML =
+    [1,2,3,4,5,6,7,8,9].map(function (n) { return '<button type="button" data-k="' + n + '">' + n + "</button>"; }).join("") +
+    '<button type="button" class="wide" data-k="back">Effacer</button>' +
+    '<button type="button" data-k="0">0</button>' +
+    '<button type="button" class="wide" data-k="ok">Entrer</button>';
+
+  function tenter() {
+    var i = document.getElementById("codeIn"); if (!portePersonne) return;
+    if (i.value === portePersonne.code) { entrer(portePersonne); return; }
+    document.getElementById("porteErr").textContent = "Code incorrect"; i.value = "";
+  }
+  document.getElementById("pad").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-k]"); if (!b) return;
+    var i = document.getElementById("codeIn"), k = b.dataset.k;
+    document.getElementById("porteErr").textContent = "";
+    if (k === "back") i.value = i.value.slice(0, -1);
+    else if (k === "ok") tenter();
+    else if (i.value.length < 6) { i.value += k; if (portePersonne && i.value.length === portePersonne.code.length) tenter(); }
+  });
+  document.getElementById("codeIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); tenter(); } });
+  document.getElementById("sortir").addEventListener("click", function () { sessionEffacer(); state.moi = null; ouvrirPorte(); });
+
+  function majSync(err) {
+    var dot = document.getElementById("dot"), t = document.getElementById("syncTxt");
+    if (err) { dot.className = "dot off"; t.textContent = "· connexion perdue, rechargez la page"; return; }
+    if (state.local) { dot.className = "dot off"; t.textContent = "· hors ligne, saisies gardées sur cet appareil"; }
+    else { dot.className = "dot"; t.textContent = "· partagé avec les autres appareils"; }
+  }
+
+  /* ---------- écritures ---------- */
+  function jourVide(d) { return { d: d, cmd_matin: {}, cmd_aprem: {}, livre: {}, invendu: {}, caisse: 0 }; }
+  function jour(d) { return state.jours[d] || jourVide(d); }
+
+  async function ecrireJour(d, patch) {
+    if (state.local) {
+      var j = Object.assign(jourVide(d), state.jours[d] || {});
+      Object.keys(patch).forEach(function (k) {
+        if (patch[k] && typeof patch[k] === "object") j[k] = Object.assign({}, j[k] || {}, patch[k]);
+        else j[k] = patch[k];
+      });
+      state.jours[d] = j; lsEcrire(); rendre(); return;
+    }
+    try { await state.db.doc("depot_jours/" + d).set(Object.assign({ d: d }, patch), { merge: true }); }
+    catch (e) { window.alert("La saisie n'a pas été enregistrée. Vérifiez la connexion."); }
+  }
+
+  async function ecrireProduit(p) {
+    if (state.local) {
+      var i = state.produits.findIndex(function (x) { return x.id === p.id; });
+      if (i >= 0) state.produits[i] = p; else state.produits.push(p);
+      state.produits.sort(trier); lsEcrire(); rendre(); return;
+    }
+    try { await state.db.doc("depot_produits/" + p.id).set({ nom: p.nom, prix: p.prix, ordre: p.ordre }); }
+    catch (e) { window.alert("Enregistrement impossible."); }
+  }
+  async function supprimerProduit(id) {
+    if (state.local) { state.produits = state.produits.filter(function (x) { return x.id !== id; }); lsEcrire(); rendre(); return; }
+    try { await state.db.doc("depot_produits/" + id).delete(); } catch (e) {}
+  }
+  async function ecrireAcces(p) {
+    if (state.local) {
+      var i = state.acces.findIndex(function (x) { return x.id === p.id; });
+      if (i >= 0) state.acces[i] = p; else state.acces.push(p);
+      lsEcrire(); rendreEquipe(); return;
+    }
+    try { await state.db.doc("depot_acces/" + p.id).set({ nom: p.nom, code: p.code, role: p.role, ordre: p.ordre || 0 }); }
+    catch (e) {}
+  }
+  async function supprimerAcces(id) {
+    if (state.local) { state.acces = state.acces.filter(function (x) { return x.id !== id; }); lsEcrire(); rendreEquipe(); return; }
+    try { await state.db.doc("depot_acces/" + id).delete(); } catch (e) {}
+  }
+  async function ecrireReglages(r) {
+    state.reglages = Object.assign({}, state.reglages, r);
+    if (state.local) { lsEcrire(); return; }
+    try { await state.db.doc("depot_reglages/general").set(r, { merge: true }); } catch (e) {}
+  }
+
+  /* ---------- rendu ---------- */
+  function rendre() {
+    if (!state.moi) return;
+    document.getElementById("today").textContent = FMT_LONG.format(new Date());
+    rendreCommande(); rendreSoir();
+    if (estDirection()) { rendreProduits(); rendreEquipe(); }
+  }
+
+  function rendreCommande() {
+    var d = demain(), j = jour(d);
+    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var q = j[champ] || {};
+
+    document.getElementById("cmdTitre").textContent = "Commande pour " + libDate(d);
+    var autre = vue.creneau === "matin" ? (j.cmd_aprem || {}) : (j.cmd_matin || {});
+    var nAutre = Object.keys(autre).reduce(function (s, k) { return s + (Number(autre[k]) || 0); }, 0);
+    document.getElementById("cmdSous").textContent = vue.creneau === "matin"
+      ? "Ce qui doit arriver tôt" + (nAutre ? " · " + nAutre + " pièces déjà prévues l'après-midi" : "")
+      : "Ce qui doit arriver dans la journée" + (nAutre ? " · " + nAutre + " pièces déjà prévues le matin" : "");
+
+    document.getElementById("cr-matin").className = vue.creneau === "matin" ? "is-on" : "";
+    document.getElementById("cr-aprem").className = vue.creneau === "aprem" ? "is-on" : "";
+
+    var el = document.getElementById("cmdListe");
+    if (!state.produits.length) {
+      el.innerHTML = '<p class="hint">' + (estDirection()
+        ? "Ajoutez vos produits dans l'onglet Produits."
+        : "La direction doit d'abord enregistrer les produits.") + "</p>";
+      document.getElementById("cmdTotal").textContent = "0";
+      return;
+    }
+
+    var total = 0;
+    el.innerHTML = state.produits.map(function (p) {
+      var n = Number(q[p.id]) || 0; total += n;
+      return '<div class="ligne' + (n ? "" : " vide") + '">' +
+        '<div><div class="nom">' + esc(p.nom) + '</div>' +
+        '<div class="sous">' + euros(p.prix) + " l'unité</div></div>" +
+        '<div class="compteur">' +
+        '<button type="button" data-m="-" data-id="' + p.id + '" aria-label="Retirer un ' + esc(p.nom) + '">−</button>' +
+        '<input type="number" min="0" inputmode="numeric" value="' + n + '" data-q="' + p.id + '" aria-label="Quantité de ' + esc(p.nom) + '">' +
+        '<button type="button" data-m="+" data-id="' + p.id + '" aria-label="Ajouter un ' + esc(p.nom) + '">+</button>' +
+        "</div></div>";
+    }).join("");
+    document.getElementById("cmdTotal").textContent = total + (total > 1 ? " pièces" : " pièce");
+  }
+
+  function texteCommande() {
+    var d = demain(), j = jour(d);
+    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var q = j[champ] || {};
+    var lignes = state.produits.filter(function (p) { return Number(q[p.id]) > 0; })
+      .map(function (p) { return "• " + p.nom + " : " + q[p.id]; });
+    if (!lignes.length) return null;
+    var nom = state.reglages.nomDepot || "Denville";
+    var creneau = vue.creneau === "matin" ? "LIVRAISON DU MATIN" : "LIVRAISON DE L'APRÈS-MIDI";
+    var h = new Date().toTimeString().slice(0, 5);
+    return "COMMANDE " + nom.toUpperCase() + "\n" + creneau + "\n" +
+      libDate(d) + "\n\n" + lignes.join("\n") +
+      "\n\nEnvoyé par " + (state.moi ? state.moi.nom : "") + " à " + h;
+  }
+
+  function rendreSoir() {
+    var d = aujourdhui(), j = jour(d);
+    var livre = j.livre || {}, inv = j.invendu || {};
+    var cmd = {};
+    /* ce qui a été livré aujourd'hui : la commande passée hier pour aujourd'hui */
+    var m = j.cmd_matin || {}, a = j.cmd_aprem || {};
+    state.produits.forEach(function (p) {
+      cmd[p.id] = (Number(m[p.id]) || 0) + (Number(a[p.id]) || 0);
+    });
+
+    document.getElementById("soirTitre").textContent = "Invendus du " + libDate(d);
+
+    var el = document.getElementById("soirListe");
+    var actifs = state.produits.filter(function (p) {
+      return (Number(livre[p.id]) || 0) > 0 || cmd[p.id] > 0 || (Number(inv[p.id]) || 0) > 0;
+    });
+    if (!actifs.length) {
+      el.innerHTML = '<p class="hint">Rien n\'a été livré aujourd\'hui. Les invendus se saisissent le lendemain d\'une commande.</p>';
+    } else {
+      el.innerHTML = actifs.map(function (p) {
+        var l = livre[p.id] !== undefined ? Number(livre[p.id]) : cmd[p.id];
+        var n = Number(inv[p.id]) || 0;
+        var vendu = Math.max(0, l - n);
+        return '<div class="ligne' + (n ? "" : " vide") + '">' +
+          '<div><div class="nom">' + esc(p.nom) + '</div>' +
+          '<div class="sous">livré ' + l + " · vendu " + vendu + " · " + euros(vendu * p.prix) + "</div></div>" +
+          '<div class="compteur">' +
+          '<button type="button" data-mi="-" data-id="' + p.id + '" aria-label="Retirer">−</button>' +
+          '<input type="number" min="0" inputmode="numeric" value="' + n + '" data-inv="' + p.id + '" aria-label="Invendus de ' + esc(p.nom) + '">' +
+          '<button type="button" data-mi="+" data-id="' + p.id + '" aria-label="Ajouter">+</button>' +
+          "</div></div>";
+      }).join("");
+    }
+
+    var tl = 0, ti = 0, th = 0;
+    state.produits.forEach(function (p) {
+      var l = livre[p.id] !== undefined ? Number(livre[p.id]) : (cmd[p.id] || 0);
+      var n = Number(inv[p.id]) || 0;
+      tl += l; ti += n; th += Math.max(0, l - n) * p.prix;
+    });
+    document.getElementById("kLivre").textContent = tl;
+    document.getElementById("kInvendu").textContent = ti + (tl ? " · " + Math.round(ti / tl * 100) + " %" : "");
+    document.getElementById("kVendu").textContent = Math.max(0, tl - ti);
+    document.getElementById("kTheorique").textContent = euros(th);
+
+    var caisse = Number(j.caisse) || 0;
+    var champ = document.getElementById("caisseIn");
+    if (document.activeElement !== champ) champ.value = caisse ? caisse : "";
+
+    var kE = document.getElementById("kEcart");
+    if (!caisse) { kE.textContent = "—"; kE.className = "v"; }
+    else {
+      var ec = caisse - th;
+      var pct = th ? Math.abs(ec) / th * 100 : 0;
+      kE.textContent = (ec > 0 ? "+" : "") + euros(ec);
+      kE.className = "v " + (pct < 2 ? "ecart-ok" : pct < 5 ? "ecart-tiede" : "ecart-nok");
+    }
+  }
+
+  function rendreProduits() {
+    document.getElementById("prodListe").innerHTML = state.produits.map(function (p) {
+      return '<div class="setrow" data-id="' + p.id + '">' +
+        '<input type="text" value="' + esc(p.nom) + '" data-f="nom" aria-label="Nom">' +
+        '<span class="lbl">prix</span>' +
+        '<input type="number" step="0.05" min="0" value="' + p.prix.toFixed(2) + '" data-f="prix" aria-label="Prix">' +
+        '<button class="del" data-del="' + p.id + '" aria-label="Supprimer ' + esc(p.nom) + '">×</button></div>';
+    }).join("");
+  }
+
+  function rendreEquipe() {
+    var el = document.getElementById("gensAdmin");
+    if (!el || !estDirection()) return;
+    el.innerHTML = state.acces.map(function (p) {
+      return '<div class="setrow" data-id="' + p.id + '">' +
+        '<input type="text" value="' + esc(p.nom) + '" data-g="nom" aria-label="Prénom">' +
+        '<select data-g="role" aria-label="Rôle">' +
+        '<option value="vente"' + (p.role !== "direction" ? " selected" : "") + ">Vente</option>" +
+        '<option value="direction"' + (p.role === "direction" ? " selected" : "") + ">Direction</option></select>" +
+        '<span class="lbl">code</span>' +
+        '<input type="text" class="mono" value="' + esc(p.code) + '" data-g="code" inputmode="numeric" maxlength="6" style="width:86px" aria-label="Code">' +
+        (state.moi && state.moi.id === p.id ? '<span class="lbl">vous</span>' :
+          '<button class="del" data-delg="' + p.id + '" aria-label="Supprimer">×</button>') + "</div>";
+    }).join("");
+    var t = document.getElementById("telWa"), n = document.getElementById("nomDepot");
+    if (document.activeElement !== t) t.value = state.reglages.telWa || "";
+    if (document.activeElement !== n) n.value = state.reglages.nomDepot || "";
+  }
+
+  /* ---------- interactions commande ---------- */
+  document.getElementById("cr-matin").addEventListener("click", function () { vue.creneau = "matin"; rendreCommande(); });
+  document.getElementById("cr-aprem").addEventListener("click", function () { vue.creneau = "aprem"; rendreCommande(); });
+
+  function majQte(pid, delta, valeur) {
+    var d = demain(), j = jour(d);
+    var champ = vue.creneau === "matin" ? "cmd_matin" : "cmd_aprem";
+    var q = Object.assign({}, j[champ] || {});
+    var n = valeur !== undefined ? valeur : (Number(q[pid]) || 0) + delta;
+    /* on garde le zéro plutôt que d'ôter la clé : une fusion n'efface rien,
+       et une quantité remise à zéro doit vraiment redescendre à zéro */
+    q[pid] = Math.max(0, Math.round(n) || 0);
+    var patch = {}; patch[champ] = q;
+    ecrireJour(d, patch);
+  }
+
+  document.getElementById("cmdListe").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-m]"); if (!b) return;
+    majQte(b.dataset.id, b.dataset.m === "+" ? 1 : -1);
+  });
+  document.getElementById("cmdListe").addEventListener("change", function (ev) {
+    var i = ev.target.closest("input[data-q]"); if (!i) return;
+    majQte(i.dataset.q, 0, Number(i.value) || 0);
+  });
+
+  /* ---------- interactions soir ---------- */
+  function majInvendu(pid, delta, valeur) {
+    var d = aujourdhui(), j = jour(d);
+    var inv = Object.assign({}, j.invendu || {});
+    var n = valeur !== undefined ? valeur : (Number(inv[pid]) || 0) + delta;
+    inv[pid] = Math.max(0, Math.round(n) || 0);
+    ecrireJour(d, { invendu: inv });
+  }
+  document.getElementById("soirListe").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-mi]"); if (!b) return;
+    majInvendu(b.dataset.id, b.dataset.mi === "+" ? 1 : -1);
+  });
+  document.getElementById("soirListe").addEventListener("change", function (ev) {
+    var i = ev.target.closest("input[data-inv]"); if (!i) return;
+    majInvendu(i.dataset.inv, 0, Number(i.value) || 0);
+  });
+  document.getElementById("caisseIn").addEventListener("change", function () {
+    var v = Math.max(0, Number(this.value) || 0);
+    ecrireJour(aujourdhui(), { caisse: v });
+  });
+
+  /* ---------- envoi ---------- */
+  function envoyer(canal) {
+    var txt = texteCommande();
+    if (!txt) { window.alert("La commande est vide."); return; }
+    if (canal === "copier") {
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () {
+        window.alert("Commande copiée. Collez-la où vous voulez.");
+      }, function () { window.prompt("Copiez ce texte :", txt); });
+      else window.prompt("Copiez ce texte :", txt);
+      return;
+    }
+    if (canal === "wa") {
+      var tel = String(state.reglages.telWa || "").replace(/[^0-9]/g, "");
+      var url = tel ? "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt)
+                    : "https://wa.me/?text=" + encodeURIComponent(txt);
+      window.open(url, "_blank");
+    } else {
+      window.open("https://t.me/share/url?url=&text=" + encodeURIComponent(txt), "_blank");
+    }
+  }
+  document.getElementById("envoiWa").addEventListener("click", function () { envoyer("wa"); });
+  document.getElementById("envoiTg").addEventListener("click", function () { envoyer("tg"); });
+  document.getElementById("copier").addEventListener("click", function () { envoyer("copier"); });
+
+  /* ---------- réglages produits / équipe ---------- */
+  document.getElementById("prodListe").addEventListener("change", function (ev) {
+    var f = ev.target.dataset.f; if (!f) return;
+    var row = ev.target.closest(".setrow");
+    var p = state.produits.find(function (x) { return x.id === row.dataset.id; }); if (!p) return;
+    if (f === "nom") { var n = ev.target.value.trim(); if (!n) { ev.target.value = p.nom; return; } p.nom = n; }
+    else p.prix = Math.max(0, Number(ev.target.value) || 0);
+    ecrireProduit(p);
+  });
+  document.getElementById("prodListe").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-del]"); if (!b) return;
+    var p = state.produits.find(function (x) { return x.id === b.dataset.del; }); if (!p) return;
+    if (window.confirm("Retirer « " + p.nom + " » de la liste ?")) supprimerProduit(p.id);
+  });
+  document.getElementById("addProd").addEventListener("click", function () {
+    var nom = document.getElementById("newNom").value.trim(); if (!nom) return;
+    var prix = Math.max(0, Number(document.getElementById("newPrix").value) || 0);
+    var base = slug(nom), id = base, k = 2;
+    while (state.produits.some(function (x) { return x.id === id; })) { id = base + "-" + k++; }
+    var ordre = state.produits.length ? Math.max.apply(null, state.produits.map(function (x) { return x.ordre || 0; })) + 10 : 10;
+    ecrireProduit({ id: id, nom: nom, prix: prix, ordre: ordre });
+    document.getElementById("newNom").value = ""; document.getElementById("newPrix").value = "";
+    document.getElementById("newNom").focus();
+  });
+
+  document.getElementById("gensAdmin").addEventListener("change", function (ev) {
+    var f = ev.target.dataset.g; if (!f) return;
+    var row = ev.target.closest(".setrow");
+    var p = state.acces.find(function (x) { return x.id === row.dataset.id; }); if (!p) return;
+    if (f === "nom") { var n = ev.target.value.trim(); if (!n) { ev.target.value = p.nom; return; } p.nom = n; }
+    else if (f === "role") {
+      if (p.role === "direction" && ev.target.value !== "direction" &&
+          state.acces.filter(function (x) { return x.role === "direction"; }).length < 2) {
+        window.alert("Gardez au moins une personne en direction.");
+        ev.target.value = "direction"; return;
+      }
+      p.role = ev.target.value === "direction" ? "direction" : "vente";
+    } else p.code = ev.target.value.replace(/\D/g, "").slice(0, 6);
+    ecrireAcces(p);
+    if (state.moi && state.moi.id === p.id) { state.moi = p; document.getElementById("moi").textContent = p.nom; }
+  });
+  document.getElementById("gensAdmin").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-delg]"); if (!b) return;
+    var p = state.acces.find(function (x) { return x.id === b.dataset.delg; }); if (!p) return;
+    if (p.role === "direction" && state.acces.filter(function (x) { return x.role === "direction"; }).length < 2) {
+      window.alert("Gardez au moins une personne en direction."); return;
+    }
+    if (window.confirm("Retirer l'accès de « " + p.nom + " » ?")) supprimerAcces(p.id);
+  });
+  document.getElementById("addGens").addEventListener("click", function () {
+    var nom = document.getElementById("newGens").value.trim(); if (!nom) return;
+    var role = document.getElementById("newRole").value === "direction" ? "direction" : "vente";
+    var base = slug(nom), id = base, k = 2;
+    while (state.acces.some(function (x) { return x.id === id; })) { id = base + "-" + k++; }
+    var code = String(Math.floor(1000 + Math.random() * 9000));
+    var ordre = state.acces.length ? Math.max.apply(null, state.acces.map(function (x) { return x.ordre || 0; })) + 10 : 10;
+    ecrireAcces({ id: id, nom: nom, code: code, role: role, ordre: ordre });
+    document.getElementById("newGens").value = "";
+    window.alert("Accès créé pour " + nom + ".\nSon code : " + code + "\n\nDonnez-le-lui de vive voix.");
+  });
+  document.getElementById("telWa").addEventListener("change", function () { ecrireReglages({ telWa: this.value.trim() }); });
+  document.getElementById("nomDepot").addEventListener("change", function () { ecrireReglages({ nomDepot: this.value.trim() }); });
+
+  /* ---------- bilan ---------- */
+  var histo = { charge: false, encours: false, jours: {}, semaineOuverte: null };
+
+  function semaineISO(d) {
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var jr = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - jr);
+    var an = t.getUTCFullYear();
+    var deb = new Date(Date.UTC(an, 0, 1));
+    return { an: an, no: Math.ceil((((t - deb) / 86400000) + 1) / 7), cle: an + "-S" + String(Math.ceil((((t - deb) / 86400000) + 1) / 7)).padStart(2, "0") };
+  }
+  function lundiDe(an, no) {
+    var d = new Date(Date.UTC(an, 0, 4));
+    var jr = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() - jr + 1 + (no - 1) * 7);
+    return d;
+  }
+  function libSemaine(an, no) {
+    var l = lundiDe(an, no), f = new Date(l); f.setUTCDate(f.getUTCDate() + 6);
+    return FMT_JOUR.format(l).replace(".", "") + " – " + FMT_JOUR.format(f).replace(".", "");
+  }
+
+  async function chargerBilan(force) {
+    if (histo.encours) return;
+    if (histo.charge && !force) { rendreBilan(); return; }
+    histo.encours = true;
+    document.getElementById("bilanResume").textContent = "Chargement…";
+    if (state.local) histo.jours = state.jours;
+    else {
+      try {
+        var snap = await state.db.collection("depot_jours").orderBy("d", "desc").limit(500).get();
+        var j = {}; snap.docs.forEach(function (d) { j[d.id] = d.data() || {}; });
+        histo.jours = j;
+      } catch (e) {
+        histo.encours = false;
+        document.getElementById("bilanResume").textContent = "Historique indisponible. Vérifiez la connexion.";
+        return;
+      }
+    }
+    histo.charge = true; histo.encours = false; rendreBilan();
+  }
+
+  function agreger(an) {
+    var parProd = {}, parSem = {}, semaines = {};
+    state.produits.forEach(function (p) { parProd[p.id] = { l: 0, i: 0, ca: 0, jours: 0 }; });
+
+    Object.keys(histo.jours).forEach(function (date) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date); if (!m) return;
+      var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var w = semaineISO(d); if (an && w.an !== an) return;
+      var J = histo.jours[date] || {};
+      var cm = J.cmd_matin || {}, ca = J.cmd_aprem || {}, lv = J.livre || {}, iv = J.invendu || {};
+      semaines[w.cle] = { an: w.an, no: w.no };
+      if (!parSem[w.cle]) parSem[w.cle] = { l: 0, i: 0, th: 0, reel: 0, prods: {} };
+
+      var actif = false;
+      state.produits.forEach(function (p) {
+        var l = lv[p.id] !== undefined ? Number(lv[p.id]) : ((Number(cm[p.id]) || 0) + (Number(ca[p.id]) || 0));
+        var i = Number(iv[p.id]) || 0;
+        if (!l && !i) return;
+        actif = true;
+        var vendu = Math.max(0, l - i), ca_ = vendu * p.prix;
+        parProd[p.id].l += l; parProd[p.id].i += i; parProd[p.id].ca += ca_; parProd[p.id].jours++;
+        parSem[w.cle].l += l; parSem[w.cle].i += i; parSem[w.cle].th += ca_;
+        if (!parSem[w.cle].prods[p.id]) parSem[w.cle].prods[p.id] = { l: 0, i: 0, ca: 0 };
+        parSem[w.cle].prods[p.id].l += l; parSem[w.cle].prods[p.id].i += i; parSem[w.cle].prods[p.id].ca += ca_;
+      });
+      if (actif) parSem[w.cle].reel += Number(J.caisse) || 0;
+    });
+    return { parProd: parProd, parSem: parSem, semaines: semaines };
+  }
+
+  function annees() {
+    var a = {};
+    Object.keys(histo.jours).forEach(function (d) { var m = /^(\d{4})/.exec(d); if (m) a[Number(m[1])] = true; });
+    var l = Object.keys(a).map(Number).sort(function (x, y) { return y - x; });
+    return l.length ? l : [new Date().getFullYear()];
+  }
+
+  function rendreBilan() {
+    var sel = document.getElementById("anneeSel"), ans = annees();
+    if (sel.options.length !== ans.length) {
+      sel.innerHTML = ans.map(function (a) { return '<option value="' + a + '">' + a + "</option>"; }).join("");
+    }
+    var an = Number(sel.value) || ans[0]; sel.value = String(an);
+
+    var ag = agreger(an);
+    var cles = Object.keys(ag.parSem).sort().reverse();
+    document.getElementById("bilanResume").textContent = cles.length
+      ? cles.length + (cles.length > 1 ? " semaines enregistrées en " : " semaine enregistrée en ") + an
+      : "Aucune donnée en " + an + ".";
+
+    var lignes = state.produits.map(function (p) {
+      var r = ag.parProd[p.id] || { l: 0, i: 0, ca: 0, jours: 0 };
+      return { p: p, l: r.l, i: r.i, ca: r.ca, jours: r.jours,
+               taux: r.l ? Math.round(r.i / r.l * 1000) / 10 : 0,
+               moy: r.jours ? Math.round(r.l / r.jours * 10) / 10 : 0 };
+    }).filter(function (x) { return x.l || x.i; }).sort(function (a, b) { return b.ca - a.ca; });
+
+    var tp = document.getElementById("tblProd");
+    if (!lignes.length) tp.innerHTML = "";
+    else {
+      var TL = 0, TI = 0, TC = 0;
+      lignes.forEach(function (x) { TL += x.l; TI += x.i; TC += x.ca; });
+      tp.innerHTML = "<thead><tr><th>Produit</th><th>Livré</th><th>Vendu</th><th>Jeté</th>" +
+        "<th>Taux</th><th>Recette</th><th>Moy/jour</th></tr></thead><tbody>" +
+        lignes.map(function (x) {
+          return "<tr><td>" + esc(x.p.nom) + "</td><td>" + x.l +
+            '</td><td class="c-vendu">' + (x.l - x.i) + '</td><td class="c-jete">' + x.i + "</td>" +
+            '<td class="' + (x.taux > 10 ? "c-jete" : "moy") + '">' + String(x.taux).replace(".", ",") + " %</td>" +
+            "<td>" + euros(x.ca) + '</td><td class="moy">' + String(x.moy).replace(".", ",") + "</td></tr>";
+        }).join("") + "</tbody><tfoot><tr><td>Total</td><td>" + TL + "</td><td>" + (TL - TI) +
+        "</td><td>" + TI + "</td><td>" + (TL ? Math.round(TI / TL * 1000) / 10 : 0).toString().replace(".", ",") +
+        " %</td><td>" + euros(TC) + "</td><td></td></tr></tfoot>";
+    }
+
+    var ts = document.getElementById("tblSem");
+    if (!cles.length) { ts.innerHTML = ""; document.getElementById("detailSem").hidden = true; return; }
+    ts.innerHTML = "<thead><tr><th>Semaine</th><th>Période</th><th>Livré</th><th>Jeté</th>" +
+      "<th>Attendu</th><th>Caisse</th><th>Écart</th></tr></thead><tbody>" +
+      cles.map(function (c) {
+        var w = ag.semaines[c], v = ag.parSem[c];
+        var ec = v.reel ? v.reel - v.th : null;
+        var cls = ec === null ? "c-0" : (Math.abs(ec) / (v.th || 1) * 100 < 2 ? "ecart-ok" : Math.abs(ec) / (v.th || 1) * 100 < 5 ? "ecart-tiede" : "ecart-nok");
+        return '<tr class="sem' + (histo.semaineOuverte === c ? " is-open" : "") + '" data-sem="' + c + '">' +
+          "<td>S" + String(w.no).padStart(2, "0") + '</td><td class="moy">' + libSemaine(w.an, w.no) + "</td>" +
+          "<td>" + v.l + '</td><td class="c-jete">' + v.i + "</td><td>" + euros(v.th) + "</td>" +
+          "<td>" + (v.reel ? euros(v.reel) : '<span class="c-0">—</span>') + "</td>" +
+          '<td class="' + cls + '">' + (ec === null ? "—" : (ec > 0 ? "+" : "") + euros(ec)) + "</td></tr>";
+      }).join("") + "</tbody>";
+
+    rendreDetail(ag);
+  }
+
+  function rendreDetail(ag) {
+    var box = document.getElementById("detailSem"), c = histo.semaineOuverte;
+    if (!c || !ag.parSem[c]) { box.hidden = true; box.innerHTML = ""; return; }
+    var w = ag.semaines[c], v = ag.parSem[c];
+    var lignes = Object.keys(v.prods).map(function (pid) {
+      var p = state.produits.find(function (x) { return x.id === pid; });
+      if (!p) return null;
+      var r = v.prods[pid];
+      return { nom: p.nom, l: r.l, i: r.i, ca: r.ca, taux: r.l ? Math.round(r.i / r.l * 1000) / 10 : 0 };
+    }).filter(Boolean).sort(function (a, b) { return b.ca - a.ca; });
+
+    box.hidden = false;
+    box.innerHTML = '<h2 class="sec">Semaine ' + String(w.no).padStart(2, "0") + " · " + libSemaine(w.an, w.no) +
+      '</h2><p class="hint">Détail par produit</p><div class="scroll"><table>' +
+      "<thead><tr><th>Produit</th><th>Livré</th><th>Vendu</th><th>Jeté</th><th>Taux</th><th>Recette</th></tr></thead><tbody>" +
+      lignes.map(function (x) {
+        return "<tr><td>" + esc(x.nom) + "</td><td>" + x.l + '</td><td class="c-vendu">' + (x.l - x.i) +
+          '</td><td class="c-jete">' + x.i + '</td><td class="' + (x.taux > 10 ? "c-jete" : "moy") + '">' +
+          String(x.taux).replace(".", ",") + " %</td><td>" + euros(x.ca) + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  document.getElementById("anneeSel").addEventListener("change", function () { histo.semaineOuverte = null; rendreBilan(); });
+  document.getElementById("recharger").addEventListener("click", function () { chargerBilan(true); });
+  document.getElementById("tblSem").addEventListener("click", function (ev) {
+    var tr = ev.target.closest("tr[data-sem]"); if (!tr) return;
+    histo.semaineOuverte = histo.semaineOuverte === tr.dataset.sem ? null : tr.dataset.sem;
+    rendreBilan();
+  });
+
+  /* ---------- onglets ---------- */
+  var onglets = [["tab-cmd", "v-cmd"], ["tab-soir", "v-soir"], ["tab-bilan", "v-bilan"], ["tab-prod", "v-prod"], ["tab-equipe", "v-equipe"]];
+  onglets.forEach(function (o) {
+    document.getElementById(o[0]).addEventListener("click", function () {
+      onglets.forEach(function (x) {
+        var s = x[0] === o[0];
+        document.getElementById(x[0]).setAttribute("aria-selected", s ? "true" : "false");
+        document.getElementById(x[1]).hidden = !s;
+      });
+      if (o[0] === "tab-bilan") chargerBilan(false);
+    });
+  });
+
+  demarrer();
+})();
+</script>
+</body>
+</html>
