@@ -1,4 +1,4 @@
-# Dépôt de Denville
+# Dépôt de Danviller
 
 Commandes au fournil, invendus du soir et contrôle de caisse pour le
 dépôt de pain. Une page, un code par vendeuse, aucun compte à créer.

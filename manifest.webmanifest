@@ -1,6 +1,6 @@
 {
-  "name": "Dépôt de Denville",
-  "short_name": "Denville",
+  "name": "Dépôt de Danviller",
+  "short_name": "Danviller",
   "description": "Commandes, invendus et contrôle de caisse du dépôt de pain",
   "start_url": "./",
   "scope": "./",

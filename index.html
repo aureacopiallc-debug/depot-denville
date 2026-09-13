@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Dépôt Denville">
+<meta name="apple-mobile-web-app-title" content="Dépôt Danviller">
 <meta name="theme-color" content="#F3F4F2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone-180.png">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
-<title>Dépôt de Denville</title>
+<title>Dépôt de Danviller</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Karla:wght@400;500;600;700&display=swap">
@@ -181,7 +181,7 @@
 <body>
 
 <div class="porte" id="porte" hidden>
-  <h1 class="brand">Dépôt de Denville</h1>
+  <h1 class="brand">Dépôt de Danviller</h1>
   <p class="intro" id="porteIntro">Qui est en boutique ?</p>
   <div class="gens" id="gens"></div>
   <div class="code-zone hidden" id="codeZone">
@@ -193,7 +193,7 @@
 
 <div class="wrap" id="app" hidden>
   <div class="top">
-    <h1 class="brand">Dépôt de Denville</h1>
+    <h1 class="brand">Dépôt de Danviller</h1>
     <div class="today" id="today"></div>
   </div>
   <div class="bar">
@@ -315,7 +315,7 @@
       <div class="kv"><span class="k"><label for="grPatis">Groupe pour la pâtisserie</label></span>
         <span class="v"><input type="text" id="grPatis" placeholder="Pâtisserie" style="width:190px;text-align:right"></span></div>
       <div class="kv"><span class="k"><label for="nomDepot">Nom du dépôt dans le message</label></span>
-        <span class="v"><input type="text" id="nomDepot" placeholder="Denville" style="width:190px;text-align:right"></span></div>
+        <span class="v"><input type="text" id="nomDepot" placeholder="Danviller" style="width:190px;text-align:right"></span></div>
     </div>
     <p class="foot">Ces noms ne servent qu'à rappeler à la vendeuse où envoyer : écrivez-les exactement comme dans WhatsApp, pour qu'elle reconnaisse le bon groupe dans la liste de partage. WhatsApp interdit à une application extérieure d'écrire directement dans un groupe ; le choix du destinataire reste donc manuel, d'où l'importance du rappel.</p>
   </section>
@@ -659,7 +659,7 @@
     var lignes = state.produits.filter(function (p) { return Number(q[p.id]) > 0; })
       .map(function (p) { return "• " + p.nom + " : " + q[p.id]; });
     if (!lignes.length) return null;
-    var nom = state.reglages.nomDepot || "Denville";
+    var nom = state.reglages.nomDepot || "Danviller";
     var pain = vue.nature === "pain";
     var creneau = pain ? "PAIN" : "PÂTISSERIE";
     var h = new Date().toTimeString().slice(0, 5);
